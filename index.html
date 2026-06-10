@@ -915,12 +915,23 @@ document.getElementById('galleryTabs').addEventListener('click', e => {
 
 /* ── Gallery infinite carousel ───────────────────────────────── */
 const galIdx = {};
-function galInit(id) {
+function galSlidePct(el) {
+  const slide = el.querySelector('.gal-slide');
+  const wrap = el.parentElement;
+  if (!slide || !wrap || !wrap.offsetWidth) return 33.333;
+  return (slide.offsetWidth / wrap.offsetWidth) * 100;
+}
+function galTx(idx, w) { return 50 - w/2 - idx * w; }
+function galApply(id, animated) {
   const el = document.getElementById(id);
+  const w = galSlidePct(el);
+  if (!animated) el.style.transition = 'none';
+  el.style.transform = `translateX(${galTx(galIdx[id], w)}%)`;
+  if (!animated) requestAnimationFrame(() => { el.style.transition = ''; });
+}
+function galInit(id) {
   galIdx[id] = 2;
-  el.style.transition = 'none';
-  el.style.transform = `translateX(-${(galIdx[id] - 1) * 33.333}%)`;
-  requestAnimationFrame(() => { el.style.transition = ''; });
+  galApply(id, false);
   galUpdateActive(id);
 }
 function galUpdateActive(id) {
@@ -938,24 +949,27 @@ function galGo(id, dir) {
   const total = parseInt(el.dataset.total);
   galIdx[id] += dir;
   el.style.transition = 'transform .5s cubic-bezier(.25,.46,.45,.94)';
-  el.style.transform = `translateX(-${(galIdx[id] - 1) * 33.333}%)`;
+  galApply(id, true);
   galUpdateActive(id);
   el.addEventListener('transitionend', function handler() {
     el.removeEventListener('transitionend', handler);
     if (galIdx[id] <= 1) {
       galIdx[id] = total + 1;
-      el.style.transition = 'none';
-      el.style.transform = `translateX(-${(galIdx[id] - 1) * 33.333}%)`;
+      galApply(id, false);
       galUpdateActive(id);
     } else if (galIdx[id] > total + 1) {
       galIdx[id] = 2;
-      el.style.transition = 'none';
-      el.style.transform = `translateX(-${(galIdx[id] - 1) * 33.333}%)`;
+      galApply(id, false);
       galUpdateActive(id);
     }
   });
 }
 document.querySelectorAll('.gallery-carousel').forEach(el => galInit(el.id));
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.gallery-carousel').forEach(el => {
+    if (el.closest('.gallery-panel.active') && galIdx[el.id] != null) galApply(el.id, false);
+  });
+});
 
 /* ── Testimonial carousel ────────────────────────────────────── */
 (function() {
